@@ -13,7 +13,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "seed": "node prisma/seed.js",
-    "test": "node --test --experimental-test-coverage src/**/*.test.js"
+    "test": "node --test --experimental-test-coverage src/tests/"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
