@@ -1,0 +1,281 @@
+// Full platform data model (design-level, per architecture doc).
+// Phase 1 wires up User + WebsiteProject only; later phases activate
+// the rest without further schema churn.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+}
+
+enum WebsiteStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExportType {
+  FRONTEND
+  BACKEND
+  FULLSTACK
+}
+
+enum ExportStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum FieldType {
+  TEXT
+  LONG_TEXT
+  RICH_TEXT
+  NUMBER
+  BOOLEAN
+  DATE
+  IMAGE
+  MULTI_IMAGE
+  URL
+  EMAIL
+  SELECT
+  MULTI_SELECT
+  RELATION
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(OWNER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  websites WebsiteProject[]
+
+  @@map("users")
+}
+
+model WebsiteProject {
+  id          String        @id @default(uuid())
+  ownerId     String
+  name        String
+  slug        String        @unique
+  category    String
+  description String?
+  brandName   String?
+  templateKey String?
+  status      WebsiteStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  owner       User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  pages       WebsitePage[]
+  settings    WebsiteSettings?
+  collections CMSCollection[]
+  forms       FormDefinition[]
+  media       MediaAsset[]
+  exportJobs  ExportJob[]
+
+  @@index([ownerId])
+  @@map("website_projects")
+}
+
+model WebsitePage {
+  id        String   @id @default(uuid())
+  websiteId String
+  name      String
+  slug      String
+  isHome    Boolean  @default(false)
+  content   Json     @default("{}")
+  seoTitle  String?
+  seoDesc   String?
+  published Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  website  WebsiteProject @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  versions PageVersion[]
+
+  @@unique([websiteId, slug])
+  @@index([websiteId])
+  @@map("website_pages")
+}
+
+model PageVersion {
+  id        String   @id @default(uuid())
+  pageId    String
+  content   Json
+  createdAt DateTime @default(now())
+
+  page WebsitePage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@map("page_versions")
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  category    String
+  description String?
+  previewUrl  String?
+  pagesSchema Json
+  createdAt   DateTime @default(now())
+
+  @@map("templates")
+}
+
+model Theme {
+  id        String   @id @default(uuid())
+  websiteId String   @unique
+  tokens    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("themes")
+}
+
+model MediaAsset {
+  id        String   @id @default(uuid())
+  websiteId String
+  url       String
+  publicId  String?
+  mimeType  String
+  size      Int
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+
+  website WebsiteProject @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@index([websiteId])
+  @@map("media_assets")
+}
+
+model CMSCollection {
+  id        String   @id @default(uuid())
+  websiteId String
+  key       String
+  name      String
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  website WebsiteProject @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  fields  CMSField[]
+  records CMSRecord[]
+
+  @@unique([websiteId, key])
+  @@index([websiteId])
+  @@map("cms_collections")
+}
+
+model CMSField {
+  id           String    @id @default(uuid())
+  collectionId String
+  key          String
+  label        String
+  type         FieldType
+  required     Boolean   @default(false)
+  options      Json?
+  order        Int       @default(0)
+
+  collection CMSCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, key])
+  @@index([collectionId])
+  @@map("cms_fields")
+}
+
+model CMSRecord {
+  id           String   @id @default(uuid())
+  collectionId String
+  data         Json
+  published    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  collection CMSCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId])
+  @@map("cms_records")
+}
+
+model FormDefinition {
+  id        String   @id @default(uuid())
+  websiteId String
+  key       String
+  name      String
+  fields    Json
+  notifyTo  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  website     WebsiteProject   @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  submissions FormSubmission[]
+
+  @@unique([websiteId, key])
+  @@index([websiteId])
+  @@map("form_definitions")
+}
+
+model FormSubmission {
+  id        String   @id @default(uuid())
+  formId    String
+  data      Json
+  ip        String?
+  createdAt DateTime @default(now())
+
+  form FormDefinition @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@map("form_submissions")
+}
+
+model WebsiteSettings {
+  id             String   @id @default(uuid())
+  websiteId      String   @unique
+  logoUrl        String?
+  faviconUrl     String?
+  primaryColor   String   @default("#2563eb")
+  secondaryColor String   @default("#1e293b")
+  fontFamily     String   @default("Inter")
+  headerLayout   String   @default("default")
+  footerLayout   String   @default("default")
+  socialLinks    Json     @default("{}")
+  seo            Json     @default("{}")
+  contact        Json     @default("{}")
+  updatedAt      DateTime @updatedAt
+
+  website WebsiteProject @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@map("website_settings")
+}
+
+model ExportJob {
+  id          String       @id @default(uuid())
+  websiteId   String
+  type        ExportType
+  status      ExportStatus @default(QUEUED)
+  filePath    String?
+  errorLog    String?
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+
+  website WebsiteProject @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@index([websiteId])
+  @@map("export_jobs")
+}
