@@ -8,7 +8,7 @@ import { MyWebsitesPage } from '../pages/websites/MyWebsitesPage';
 import { CreateWebsitePage } from '../pages/websites/CreateWebsitePage';
 import { WebsiteDetailPage } from '../pages/websites/WebsiteDetailPage';
 import { ProfilePage } from '../pages/profile/ProfilePage';
-import { ComingSoonPage } from '../pages/ComingSoonPage';
+import { BuilderPage } from '../pages/BuilderPage';
 
 export function AppRoutes() {
   return (
@@ -22,13 +22,13 @@ export function AppRoutes() {
           <Route path="/websites" element={<MyWebsitesPage />} />
           <Route path="/websites/new" element={<CreateWebsitePage />} />
           <Route path="/websites/:id" element={<WebsiteDetailPage />} />
-          <Route path="/templates" element={<ComingSoonPage feature="Templates" phase="Phase 2" />} />
-          <Route path="/editor" element={<ComingSoonPage feature="Website Editor" phase="Phase 3" />} />
-          <Route path="/cms" element={<ComingSoonPage feature="CMS Manager" phase="Phase 4" />} />
-          <Route path="/media" element={<ComingSoonPage feature="Media Library" phase="Phase 4" />} />
-          <Route path="/forms" element={<ComingSoonPage feature="Forms & Submissions" phase="Phase 4" />} />
-          <Route path="/settings" element={<ComingSoonPage feature="Website Settings" phase="Phase 4" />} />
-          <Route path="/export" element={<ComingSoonPage feature="Export & Download" phase="Phase 5" />} />
+          <Route path="/templates" element={<BuilderPage area="templates" />} />
+          <Route path="/editor" element={<BuilderPage area="editor" />} />
+          <Route path="/cms" element={<BuilderPage area="cms" />} />
+          <Route path="/media" element={<BuilderPage area="media" />} />
+          <Route path="/forms" element={<BuilderPage area="forms" />} />
+          <Route path="/settings" element={<BuilderPage area="settings" />} />
+          <Route path="/export" element={<BuilderPage area="export" />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>

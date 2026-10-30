@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: builder_platform_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: builder
@@ -11,6 +10,5 @@ services:
       - "5432:5432"
     volumes:
       - builder_platform_pgdata:/var/lib/postgresql/data
-
 volumes:
   builder_platform_pgdata:

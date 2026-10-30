@@ -5,8 +5,13 @@ import { prisma } from './config/db.js';
 
 const app = createApp();
 
+await prisma.$connect();
 const server = app.listen(env.port, () => {
   logger.info(`Builder platform API listening on http://localhost:${env.port}`);
+});
+server.on('error', (error) => {
+  logger.error(error);
+  prisma.$disconnect().finally(() => process.exit(1));
 });
 
 async function shutdown(signal) {

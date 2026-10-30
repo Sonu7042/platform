@@ -1,0 +1,63 @@
+import { test, expect } from '@playwright/test';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const backendRequire = createRequire(new URL('../../backend/package.json', import.meta.url));
+backendRequire('dotenv').config({ path: fileURLToPath(new URL('../../backend/.env', import.meta.url)) });
+const { PrismaClient } = backendRequire('@prisma/client');
+const prisma = new PrismaClient();
+const email = `browser-${Date.now()}@example.com`;
+
+test.afterAll(async () => {
+  await prisma.user.deleteMany({ where: { email } });
+  await prisma.$disconnect();
+});
+
+test('register, create, edit, publish, submit a form, and download a fullstack website', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/register');
+  await page.getByLabel('Full name').fill('Browser Tester');
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill('Password123!');
+  await page.getByRole('button', { name: 'Create Account' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto('/websites/new');
+  await page.getByLabel('Website name').fill('Browser Test Website');
+  await page.getByRole('button', { name: 'Create Website Project' }).click();
+  await expect(page).toHaveURL(/\/websites\/[0-9a-f-]+$/);
+  const id = page.url().split('/').pop();
+  await page.goto(`/templates?website=${id}`);
+  await page.getByRole('button', { name: 'Apply template' }).first().click();
+  await expect(page.getByText('Template applied.', { exact: false })).toBeVisible();
+  await page.goto(`/editor?website=${id}`);
+  await page.getByLabel('Heading', { exact: true }).first().fill('Hello from the browser test');
+  await page.getByRole('button', { name: 'Save page', exact: true }).click();
+  await expect(page.getByText('Page saved', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Preview saved page' }).click();
+  await expect(page.frameLocator('iframe').getByRole('heading', { name: 'Hello from the browser test' })).toBeVisible();
+  await page.goto(`/forms?website=${id}`);
+  await page.getByLabel('Name', { exact: true }).fill('Contact');
+  await page.getByLabel('Key (lowercase letters and hyphens)').fill('contact');
+  await page.getByLabel('Field key').fill('message');
+  await page.getByLabel('Label', { exact: true }).fill('Message');
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Contact', exact: true })).toBeVisible();
+  await page.goto(`/websites/${id}`);
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Unpublish' })).toBeVisible();
+  await page.goto(`/export?website=${id}`);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download website ZIP' }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.zip$/);
+  const link = page.getByRole('link', { name: 'View published website' });
+  const publicPath = await link.getAttribute('href');
+  await page.goto(publicPath);
+  await expect(page.getByRole('heading', { name: 'Hello from the browser test' })).toBeVisible();
+  await page.getByLabel('Message').fill('A real browser submission');
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await expect(page.getByRole('heading', { name: 'Thank you!' })).toBeVisible();
+  await page.goto(`/forms?website=${id}`);
+  await expect(page.getByText('A real browser submission', { exact: false })).toBeVisible();
+  expect(errors).toEqual([]);
+});

@@ -6,6 +6,9 @@ export function notFoundHandler(req, res) {
 }
 
 export function errorHandler(err, req, res, _next) {
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ success: false, message: 'Invalid JSON body' });
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ success: false, message: 'Image must be smaller than 5 MB' });
+  if (err.name === 'MulterError') return res.status(400).json({ success: false, message: err.message });
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
       success: false,

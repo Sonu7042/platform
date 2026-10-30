@@ -12,11 +12,13 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../context/ToastContext';
+import { axiosClient } from '../../services/axiosClient';
 
 export function MyWebsitesPage() {
   const dispatch = useDispatch();
   const { showToast } = useToast();
-  const { items, status, pagination } = useSelector((state) => state.websites);
+  const { items, status, pagination, error } = useSelector((state) => state.websites);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -24,10 +26,10 @@ export function MyWebsitesPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      dispatch(loadWebsitesThunk({ search: search || undefined, status: statusFilter || undefined }));
+      dispatch(loadWebsitesThunk({ page, search: search || undefined, status: statusFilter || undefined }));
     }, 300);
     return () => clearTimeout(timer);
-  }, [dispatch, search, statusFilter]);
+  }, [dispatch, search, statusFilter, page]);
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
@@ -37,6 +39,8 @@ export function MyWebsitesPage() {
     setPendingDelete(null);
     if (result.meta.requestStatus === 'fulfilled') {
       showToast('Website deleted', 'success');
+      if (items.length === 1 && page > 1) setPage(page - 1);
+      else dispatch(loadWebsitesThunk({ page, search: search || undefined, status: statusFilter || undefined }));
     } else {
       showToast(result.payload || 'Failed to delete website', 'error');
     }
@@ -65,10 +69,10 @@ export function MyWebsitesPage() {
             placeholder="Search websites..."
             className="pl-9"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-44">
+        <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-44" aria-label="Status filter">
           <option value="">All statuses</option>
           <option value="DRAFT">Draft</option>
           <option value="PUBLISHED">Published</option>
@@ -76,6 +80,7 @@ export function MyWebsitesPage() {
         </Select>
       </div>
 
+      {status === 'failed' && <p role="alert" className="text-red-600">{error}</p>}
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -116,7 +121,7 @@ export function MyWebsitesPage() {
                     <Pencil size={14} /> Open
                   </Button>
                 </Link>
-                <Button variant="ghost" size="sm" title="Preview (available once published)" disabled>
+                <Button variant="ghost" size="sm" title="View published website" disabled={site.status !== 'PUBLISHED'} onClick={() => window.open(`${axiosClient.defaults.baseURL.replace(/\/api\/?$/, '')}/sites/${site.slug}`, '_blank', 'noopener,noreferrer')}>
                   <ExternalLink size={14} />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setPendingDelete(site)}>
@@ -128,6 +133,7 @@ export function MyWebsitesPage() {
         </div>
       )}
 
+      {pagination.totalPages > 1 && <div className="flex items-center justify-center gap-4"><Button variant="secondary" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)}>Previous</Button><span className="text-sm">Page {page} of {pagination.totalPages}</span><Button variant="secondary" disabled={page >= pagination.totalPages || loading} onClick={() => setPage(page + 1)}>Next</Button></div>}
       <ConfirmDialog
         open={!!pendingDelete}
         title={`Delete "${pendingDelete?.name}"?`}

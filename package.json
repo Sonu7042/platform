@@ -1,0 +1,14 @@
+{
+  "name": "builder-platform",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix backend ci && npm --prefix frontend ci && npm --prefix backend run prisma:generate",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "test": "npm --prefix backend test",
+    "start": "node scripts/start.mjs",
+    "db:deploy": "npm --prefix backend run prisma:deploy"
+  },
+  "engines": { "node": ">=22.12.0" }
+}

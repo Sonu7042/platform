@@ -1,0 +1,71 @@
+import { test, after } from 'node:test';
+import assert from 'node:assert/strict';
+import request from 'supertest';
+import { createApp } from '../app.js';
+import { prisma } from '../config/db.js';
+
+const app = createApp();
+const email = `builder-${Date.now()}@example.com`;
+const otherEmail = `other-${Date.now()}@example.com`;
+let token, intruder, id, slug, pageId, collectionId, formId, mediaId;
+const auth = () => ({ Authorization: `Bearer ${token}` });
+const base = () => `/api/builder/websites/${id}`;
+after(async () => {
+  await prisma.user.deleteMany({ where: { email: { in: [email, otherEmail] } } });
+  await prisma.$disconnect();
+});
+
+test('complete builder workflow and tenant isolation', async () => {
+  for (const address of [email, otherEmail]) {
+    const r = await request(app).post('/api/auth/register').send({ name: 'Builder Test', email: address, password: 'Password123!' });
+    assert.equal(r.status, 201);
+    if (address === email) token = r.body.data.token; else intruder = r.body.data.token;
+  }
+  let r = await request(app).post('/api/websites').set(auth()).send({ name: 'Workflow Site', category: 'Business' });
+  assert.equal(r.status, 201); ({ id, slug } = r.body.data);
+  r = await request(app).get(`${base()}/workspace`).set('Authorization', `Bearer ${intruder}`);
+  assert.equal(r.status, 403);
+  r = await request(app).post(`${base()}/templates`).set(auth()).send({ key: 'business' });
+  assert.equal(r.status, 200);
+  r = await request(app).post(`${base()}/templates`).set(auth()).send({ key: 'business' });
+  assert.equal(r.status, 409);
+  r = await request(app).get(`${base()}/workspace`).set(auth());
+  assert.equal(r.body.data.pages.length, 1);
+  const page = r.body.data.pages[0]; pageId = page.id;
+  page.content.sections[0].heading = '<script>alert(1)</script>';
+  r = await request(app).put(`${base()}/pages/${pageId}`).set(auth()).send(page);
+  assert.equal(r.status, 200);
+  assert.equal(await prisma.pageVersion.count({ where: { pageId } }), 1);
+  r = await request(app).get(`${base()}/preview/${pageId}`).set(auth());
+  assert.equal(r.status, 200); assert.ok(r.text.includes('&lt;script&gt;')); assert.ok(!r.text.includes('<script>alert'));
+  r = await request(app).get(`/sites/${slug}`); assert.equal(r.status, 404);
+  r = await request(app).put(`${base()}/settings`).set(auth()).send({ primaryColor: '#123456', secondaryColor: '#334455', fontFamily: 'Georgia' });
+  assert.equal(r.status, 200);
+  const fields = [{ key: 'title', label: 'Title', type: 'TEXT', required: true }];
+  r = await request(app).post(`${base()}/collections`).set(auth()).send({ key: 'news', name: 'News', fields });
+  assert.equal(r.status, 201); collectionId = r.body.data.id;
+  r = await request(app).post(`${base()}/collections/${collectionId}/records`).set(auth()).send({ data: {}, published: true });
+  assert.equal(r.status, 400);
+  r = await request(app).post(`${base()}/collections/${collectionId}/records`).set(auth()).send({ data: { title: 'Published news' }, published: true });
+  assert.equal(r.status, 201);
+  r = await request(app).post(`${base()}/forms`).set(auth()).send({ key: 'contact', name: 'Contact us', fields: [{ key: 'email', label: 'Email', type: 'EMAIL', required: true }] });
+  assert.equal(r.status, 201); formId = r.body.data.id;
+  r = await request(app).post(`/api/public/forms/${formId}/submissions`).send({ email: 'visitor@example.com' });
+  assert.equal(r.status, 404);
+  r = await request(app).patch(`/api/websites/${id}`).set(auth()).send({ status: 'PUBLISHED' }); assert.equal(r.status, 200);
+  r = await request(app).get(`/sites/${slug}`); assert.equal(r.status, 200); assert.ok(r.text.includes('Published news')); assert.ok(r.text.includes('#123456'));
+  r = await request(app).post(`/api/public/forms/${formId}/submissions`).send({ email: 'invalid' }); assert.equal(r.status, 400);
+  r = await request(app).post(`/api/public/forms/${formId}/submissions`).send({ email: 'visitor@example.com', injected: 'ignored' }); assert.equal(r.status, 201);
+  r = await request(app).get(`${base()}/workspace`).set(auth()); assert.equal(r.body.data.forms[0].submissions.length, 1); assert.equal(r.body.data.forms[0].submissions[0].data.injected, undefined);
+  r = await request(app).post(`${base()}/media`).set(auth()).attach('file', Buffer.from('<svg/>'), 'bad.png'); assert.equal(r.status, 400);
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+  r = await request(app).post(`${base()}/media`).set(auth()).attach('file', png, 'pixel.png'); assert.equal(r.status, 201); mediaId = r.body.data.id;
+  r = await request(app).get(r.body.data.url); assert.equal(r.status, 200);
+  r = await request(app).get(`${base()}/export`).set('Authorization', `Bearer ${intruder}`); assert.equal(r.status, 403);
+  r = await request(app).get(`${base()}/export`).set(auth()).buffer(true).parse((res, done) => { const chunks = []; res.on('data', c => chunks.push(c)); res.on('end', () => done(null, Buffer.concat(chunks))); });
+  assert.equal(r.status, 200); assert.equal(r.body.subarray(0, 2).toString(), 'PK'); assert.ok(r.body.includes(Buffer.from('index.html'))); assert.ok(r.body.includes(Buffer.from('project.json')));
+  r = await request(app).delete(`${base()}/media/${mediaId}`).set(auth()); assert.equal(r.status, 204);
+  r = await request(app).get(`${base()}/workspace`).set(auth()); assert.equal(r.body.data.exportJobs[0].status, 'SUCCESS');
+  r = await request(app).patch(`/api/websites/${id}`).set(auth()).send({ status: 'DRAFT' }); assert.equal(r.status, 200);
+  r = await request(app).get(`/sites/${slug}`); assert.equal(r.status, 404);
+});

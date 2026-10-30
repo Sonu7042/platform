@@ -20,13 +20,13 @@ const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/websites', label: 'My Websites', icon: Globe },
   { to: '/websites/new', label: 'Create Website', icon: PlusCircle },
-  { to: '/templates', label: 'Templates', icon: LayoutTemplate, soon: true },
-  { to: '/editor', label: 'Website Editor', icon: PenTool, soon: true },
-  { to: '/cms', label: 'CMS Manager', icon: Database, soon: true },
-  { to: '/media', label: 'Media Library', icon: Image, soon: true },
-  { to: '/forms', label: 'Forms & Submissions', icon: ClipboardList, soon: true },
-  { to: '/settings', label: 'Website Settings', icon: Settings, soon: true },
-  { to: '/export', label: 'Export & Download', icon: Download, soon: true },
+  { to: '/templates', label: 'Templates', icon: LayoutTemplate },
+  { to: '/editor', label: 'Website Editor', icon: PenTool },
+  { to: '/cms', label: 'CMS Manager', icon: Database },
+  { to: '/media', label: 'Media Library', icon: Image },
+  { to: '/forms', label: 'Forms & Submissions', icon: ClipboardList },
+  { to: '/settings', label: 'Website Settings', icon: Settings },
+  { to: '/export', label: 'Export & Download', icon: Download },
   { to: '/profile', label: 'Profile & Settings', icon: UserCircle },
 ];
 
@@ -44,6 +44,7 @@ export function Sidebar({ collapsed, onToggle }) {
         )}
         <button
           onClick={onToggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
         >
           {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
@@ -55,6 +56,7 @@ export function Sidebar({ collapsed, onToggle }) {
           <NavLink
             key={to}
             to={to}
+            end
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',

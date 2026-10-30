@@ -3,8 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { env } from './config/env.js';
 import apiRoutes from './routes/index.js';
+import { builderRoutes, publicRoutes, uploadDir } from './routes/builder.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 export function createApp() {
@@ -39,7 +42,19 @@ export function createApp() {
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
 
+  app.use('/uploads', express.static(uploadDir, { dotfiles: 'deny', immutable: true, maxAge: '7d' }));
+  app.use(publicRoutes);
+  app.use('/api/builder', builderRoutes);
   app.use('/api', apiRoutes);
+
+  const frontendDir = fileURLToPath(new URL('../../frontend/dist/', import.meta.url));
+  if (env.nodeEnv === 'production' && existsSync(frontendDir)) {
+    app.use(express.static(frontendDir));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) return next();
+      res.sendFile(`${frontendDir}/index.html`);
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

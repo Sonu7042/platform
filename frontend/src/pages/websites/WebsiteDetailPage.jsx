@@ -11,10 +11,10 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { useToast } from '../../context/ToastContext';
 
 const SOON_TILES = [
-  { icon: PenTool, label: 'Visual Editor', note: 'Drag-and-drop page editing arrives in Phase 3.' },
-  { icon: Database, label: 'CMS Manager', note: 'Dynamic collections arrive in Phase 4.' },
-  { icon: ClipboardList, label: 'Forms', note: 'Form builder arrives in Phase 4.' },
-  { icon: Image, label: 'Media Library', note: 'Asset management arrives in Phase 4.' },
+  { icon: PenTool, label: 'Visual Editor', area: 'editor', note: 'Create pages and customize sections.' },
+  { icon: Database, label: 'CMS Manager', area: 'cms', note: 'Manage collections and published content.' },
+  { icon: ClipboardList, label: 'Forms', area: 'forms', note: 'Build forms and review submissions.' },
+  { icon: Image, label: 'Media Library', area: 'media', note: 'Upload and manage website images.' },
 ];
 
 export function WebsiteDetailPage() {
@@ -88,16 +88,16 @@ export function WebsiteDetailPage() {
       </Card>
 
       <div>
-        <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-slate-100">Coming up next</h3>
+        <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-slate-100">Manage your website</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {SOON_TILES.map(({ icon: Icon, label, note }) => (
-            <Card key={label} className="p-5 opacity-80">
+          {SOON_TILES.map(({ icon: Icon, label, note, area }) => (
+            <Link key={label} to={`/${area}?website=${id}`}><Card className="h-full p-5 hover:border-brand-500">
               <div className="mb-2 inline-flex rounded-lg bg-slate-100 p-2 text-slate-500 dark:bg-slate-800">
                 <Icon size={18} />
               </div>
               <p className="font-medium text-slate-800 dark:text-slate-100">{label}</p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{note}</p>
-            </Card>
+            </Card></Link>
           ))}
         </div>
       </div>

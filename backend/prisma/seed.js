@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   const email = 'demo@builderplatform.local';
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
+  if (existing) {  
     console.log('Demo user already exists, skipping seed.');
     return;
   }
