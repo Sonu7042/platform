@@ -22,11 +22,13 @@ On Windows PowerShell, use `npm.cmd` if execution policy blocks `npm.ps1`.
 - Upload PNG/JPEG/WebP images in Media Library and paste their URLs into page sections.
 - Create forms, publish from the project detail page, and view submissions in Forms & Submissions. Public pages live at `/sites/<website-slug>`.
 - Set colors, fonts, SEO defaults, and contact information in Website Settings.
-- Download HTML, images, and editable content from Export & Download. Static export forms use the source platform API and require the source project to remain published.
+- Download frontend, backend, or fullstack ZIP files from Export & Download. Backend/fullstack exports include an independent Node.js server with no package dependencies; run `npm start` in the extracted folder. Submissions persist in `data/submissions.jsonl`. Static frontend export forms use the source platform API and require the source project to remain published.
 
 ## Validation and production
 
 `npm test` runs database integration tests, including authentication, access control, editing, publishing, submissions, uploads, and export. Tests create and remove their own accounts; use a dedicated development/test database. `npm run build` builds the dashboard; `npm run lint` checks it.
+
+With the app running and Google Chrome installed, `npm run test:e2e` runs the browser workflow from registration through publishing, download, and a real form submission. Set `E2E_BASE_URL` to test another local app URL. Test accounts are removed automatically.
 
 Run `npm run build` and `npm start` to serve the dashboard and API together on port 4000. Uploads persist in `backend/uploads`; keep that directory on persistent storage and back it up with PostgreSQL. Set `FRONTEND_ORIGIN` to the deployed dashboard origin. A reverse proxy should forward `/api`, `/sites`, and `/uploads` to the backend when hosting the dashboard separately.
 

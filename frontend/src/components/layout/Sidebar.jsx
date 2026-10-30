@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard,
   Globe,
@@ -31,6 +31,8 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar({ collapsed, onToggle }) {
+  const [params] = useSearchParams();
+  const website = params.get('website');
   return (
     <aside
       className={cn(
@@ -55,7 +57,7 @@ export function Sidebar({ collapsed, onToggle }) {
         {NAV_ITEMS.map(({ to, label, icon: Icon, soon }) => (
           <NavLink
             key={to}
-            to={to}
+            to={website && ['/templates', '/editor', '/cms', '/media', '/forms', '/settings', '/export'].includes(to) ? `${to}?website=${website}` : to}
             end
             className={({ isActive }) =>
               cn(

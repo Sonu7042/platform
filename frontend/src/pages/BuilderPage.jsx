@@ -11,6 +11,11 @@ const emptyPage = () => ({ name: 'New page', slug: 'new-page', isHome: false, pu
 const blankField = () => ({ key: 'title', label: 'Title', type: 'TEXT', required: true });
 
 export function BuilderPage({ area }) {
+  const [params] = useSearchParams();
+  return <BuilderWorkspace key={`${area}:${params.get('website') || ''}`} area={area} />;
+}
+
+function BuilderWorkspace({ area }) {
   const [params, setParams] = useSearchParams();
   const id = params.get('website');
   const [sites, setSites] = useState([]);
@@ -24,7 +29,7 @@ export function BuilderPage({ area }) {
   const [recordPublished, setRecordPublished] = useState(true);
   const [collectionId, setCollectionId] = useState('');
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState('');
   const [preview, setPreview] = useState('');
   const [exportType, setExportType] = useState('FULLSTACK');
@@ -41,12 +46,10 @@ export function BuilderPage({ area }) {
 
   useEffect(() => {
     let active = true;
-    setSite(null); setPage(null); setSettings(null); setPreview(''); setError('');
     if (!id) return;
-    setLoading(true);
     axiosClient.get(`/builder/websites/${id}/workspace`).then(({ data }) => {
       if (!active) return;
-      setSite(data.data); setPage(data.data.pages[0] || emptyPage()); setSettings(data.data.settings);
+      setSite(data.data); setPage(data.data.pages[0] || { ...emptyPage(), isHome: true }); setSettings(data.data.settings);
     }).catch(e => active && setError(e.response?.data?.message || 'Unable to load website')).finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [id]);
@@ -78,7 +81,7 @@ export function BuilderPage({ area }) {
   );
 
   return <div className="space-y-6 text-slate-900 dark:text-slate-100">
-    <div className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-bold">{titles[area]}</h1><label className="flex items-center gap-3 text-sm">Website<select aria-label="Website" className="max-w-xs rounded-lg border bg-white p-2 text-slate-900 dark:bg-slate-900 dark:text-white" value={id || ''} onChange={e => setParams(e.target.value ? { website: e.target.value } : {})}><option value="">Select a website</option>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label></div>
+    <div className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-2xl font-bold">{titles[area]}</h1><label className="flex items-center gap-3 text-sm">Website<select disabled={busy} aria-label="Website" className="max-w-xs rounded-lg border bg-white p-2 text-slate-900 dark:bg-slate-900 dark:text-white" value={id || ''} onChange={e => setParams(e.target.value ? { website: e.target.value } : {})}><option value="">Select a website</option>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label></div>
     {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
     {!id && <Card className="p-8"><p>Select a website above to start.</p><Link className="text-brand-600 underline" to="/websites/new">Create a website</Link></Card>}
     {loading && <p role="status">Loading website...</p>}

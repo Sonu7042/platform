@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, PenTool, Database, ClipboardList, Image } from 'lucide-react';
+import { axiosClient } from '../../services/axiosClient';
 import { fetchWebsite } from '../../services/websiteService';
 import { updateWebsiteThunk } from '../../features/websites/websitesSlice';
 import { Card } from '../../components/ui/Card';
@@ -10,7 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useToast } from '../../context/ToastContext';
 
-const SOON_TILES = [
+const FEATURE_TILES = [
   { icon: PenTool, label: 'Visual Editor', area: 'editor', note: 'Create pages and customize sections.' },
   { icon: Database, label: 'CMS Manager', area: 'cms', note: 'Manage collections and published content.' },
   { icon: ClipboardList, label: 'Forms', area: 'forms', note: 'Build forms and review submissions.' },
@@ -19,6 +20,10 @@ const SOON_TILES = [
 
 export function WebsiteDetailPage() {
   const { id } = useParams();
+  return <WebsiteDetail key={id} id={id} />;
+}
+
+function WebsiteDetail({ id }) {
   const dispatch = useDispatch();
   const { showToast } = useToast();
   const [website, setWebsite] = useState(null);
@@ -27,7 +32,6 @@ export function WebsiteDetailPage() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     fetchWebsite(id)
       .then((data) => active && setWebsite(data))
       .catch(() => active && showToast('Failed to load website project', 'error'))
@@ -81,16 +85,23 @@ export function WebsiteDetailPage() {
               <p className="mt-3 max-w-xl text-sm text-slate-600 dark:text-slate-300">{website.description}</p>
             )}
           </div>
-          <Button variant={website.status === 'PUBLISHED' ? 'secondary' : 'primary'} onClick={togglePublish} loading={toggling}>
+          <Button disabled={website.status !== 'PUBLISHED' && !website.pages.some(p => p.isHome && p.published)} variant={website.status === 'PUBLISHED' ? 'secondary' : 'primary'} onClick={togglePublish} loading={toggling}>
             {website.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
           </Button>
         </div>
       </Card>
 
+      <div className="flex flex-wrap gap-4 text-sm text-brand-600">
+        <Link to={`/templates?website=${id}`}>Choose a template</Link>
+        <Link to={`/settings?website=${id}`}>Website settings</Link>
+        <Link to={`/export?website=${id}`}>Export website</Link>
+        {website.status === 'PUBLISHED' && <a target="_blank" rel="noreferrer" href={`${axiosClient.defaults.baseURL.replace(/\/api\/?$/, '')}/sites/${website.slug}`}>View website</a>}
+        {!website.pages.some(p => p.isHome && p.published) && <p className="text-slate-500">Add a template or a published home page before publishing.</p>}
+      </div>
       <div>
         <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-slate-100">Manage your website</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {SOON_TILES.map(({ icon: Icon, label, note, area }) => (
+          {FEATURE_TILES.map(({ icon: Icon, label, note, area }) => (
             <Link key={label} to={`/${area}?website=${id}`}><Card className="h-full p-5 hover:border-brand-500">
               <div className="mb-2 inline-flex rounded-lg bg-slate-100 p-2 text-slate-500 dark:bg-slate-800">
                 <Icon size={18} />

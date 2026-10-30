@@ -48,8 +48,12 @@ test('complete builder workflow and tenant isolation', async () => {
   assert.equal(r.status, 400);
   r = await request(app).post(`${base()}/collections/${collectionId}/records`).set(auth()).send({ data: { title: 'Published news' }, published: true });
   assert.equal(r.status, 201);
+  const recordId = r.body.data.id;
+  r = await request(app).put(`${base()}/collections/${collectionId}/records/${recordId}`).set(auth()).send({ data: { title: 'Published news updated' }, published: true }); assert.equal(r.status, 200);
+  r = await request(app).put(`${base()}/collections/${collectionId}`).set(auth()).send({ key: 'news', name: 'Latest news', fields }); assert.equal(r.status, 200);
   r = await request(app).post(`${base()}/forms`).set(auth()).send({ key: 'contact', name: 'Contact us', fields: [{ key: 'email', label: 'Email', type: 'EMAIL', required: true }] });
   assert.equal(r.status, 201); formId = r.body.data.id;
+  r = await request(app).put(`${base()}/forms/${formId}`).set(auth()).send({ key: 'contact', name: 'Contact us now', fields: [{ key: 'email', label: 'Email', type: 'EMAIL', required: true }] }); assert.equal(r.status, 200);
   r = await request(app).post(`/api/public/forms/${formId}/submissions`).send({ email: 'visitor@example.com' });
   assert.equal(r.status, 404);
   r = await request(app).patch(`/api/websites/${id}`).set(auth()).send({ status: 'PUBLISHED' }); assert.equal(r.status, 200);
@@ -64,6 +68,8 @@ test('complete builder workflow and tenant isolation', async () => {
   r = await request(app).get(`${base()}/export`).set('Authorization', `Bearer ${intruder}`); assert.equal(r.status, 403);
   r = await request(app).get(`${base()}/export`).set(auth()).buffer(true).parse((res, done) => { const chunks = []; res.on('data', c => chunks.push(c)); res.on('end', () => done(null, Buffer.concat(chunks))); });
   assert.equal(r.status, 200); assert.equal(r.body.subarray(0, 2).toString(), 'PK'); assert.ok(r.body.includes(Buffer.from('index.html'))); assert.ok(r.body.includes(Buffer.from('project.json')));
+  r = await request(app).get(`${base()}/export?type=FULLSTACK`).set(auth()).buffer(true).parse((res, done) => { const chunks = []; res.on('data', c => chunks.push(c)); res.on('end', () => done(null, Buffer.concat(chunks))); });
+  assert.equal(r.status, 200); assert.ok(r.body.includes(Buffer.from('server.js'))); assert.ok(r.body.includes(Buffer.from('render.js'))); assert.ok(r.body.includes(Buffer.from('public/index.html')));
   r = await request(app).delete(`${base()}/media/${mediaId}`).set(auth()); assert.equal(r.status, 204);
   r = await request(app).get(`${base()}/workspace`).set(auth()); assert.equal(r.body.data.exportJobs[0].status, 'SUCCESS');
   r = await request(app).patch(`/api/websites/${id}`).set(auth()).send({ status: 'DRAFT' }); assert.equal(r.status, 200);
