@@ -4,3 +4,5 @@
 !**/.env.example
 backend/uploads/
 *.log
+**/test-results/
+**/playwright-report/
